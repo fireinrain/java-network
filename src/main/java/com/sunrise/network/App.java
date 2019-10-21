@@ -1,14 +1,17 @@
+package com.sunrise.network;
+
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.*;
-import java.nio.ByteBuffer;
-import java.nio.channels.Channels;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
-public class Main {
+/**
+ * @author sunrise
+ */
+public class App {
 
     public static void main(String[] args) {
         // testProxyConfig();

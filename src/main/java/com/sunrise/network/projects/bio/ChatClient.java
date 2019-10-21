@@ -1,6 +1,5 @@
-package com.sunrise.bio;
+package com.sunrise.network.projects.bio;
 
-import javax.sql.rowset.spi.SyncResolver;
 import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -45,7 +44,7 @@ public class ChatClient {
 
             System.out.println();
             //验证秘钥和用户名
-            processPassAndUsername()
+            processPassAndUsername();
 
             while (scanner.hasNext()) {
                 String consoleStr = scanner.next();

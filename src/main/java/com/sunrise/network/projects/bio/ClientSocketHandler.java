@@ -1,4 +1,4 @@
-package com.sunrise.bio;
+package com.sunrise.network.projects.bio;
 
 import java.net.Socket;
 import java.util.concurrent.atomic.AtomicInteger;
