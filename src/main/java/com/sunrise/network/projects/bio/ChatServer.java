@@ -21,7 +21,7 @@ public class ChatServer {
     private static final int PORT = 8080;
 
     private static AtomicInteger clientCount = new AtomicInteger();
-    private static ExecutorService executorService = Executors.newCachedThreadPool();
+    private static ExecutorService executorService = Executors.newScheduledThreadPool(4);
     private static ConcurrentHashMap<String,Socket> handleClientSocketMap = new ConcurrentHashMap<>();
     //获取本机ip
     static {

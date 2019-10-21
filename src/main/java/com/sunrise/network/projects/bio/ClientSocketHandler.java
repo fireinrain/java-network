@@ -10,11 +10,11 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class ClientSocketHandler implements Runnable {
     private Socket clientSocket;
-    private AtomicInteger clientCount;
+    private AtomicInteger clientId;
 
-    public ClientSocketHandler(Socket clientSocket, AtomicInteger clientCount) {
+    public ClientSocketHandler(Socket clientSocket, AtomicInteger clientId) {
         this.clientSocket = clientSocket;
-        this.clientCount = clientCount;
+        this.clientId = clientId;
     }
 
     @Override
@@ -27,7 +27,7 @@ public class ClientSocketHandler implements Runnable {
         }
         System.out.println("handler finish-------");
         //处理完客户端-1
-        int decrementAndGet = clientCount.decrementAndGet();
+        int decrementAndGet = clientId.decrementAndGet();
         System.out.println("------->此时连接客户端数量为: "+decrementAndGet);
     }
 }
