@@ -5,6 +5,7 @@ import org.xbill.DNS.*;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.Arrays;
 
 /**
  * @description:
@@ -19,7 +20,7 @@ public class Demo1 {
         try {
             address = InetAddress.getByName("www.juejin.im");
             System.out.println(address);
-            System.out.println(address.getAddress());
+            System.out.println(Arrays.toString(address.getAddress()));
             System.out.println(address.isAnyLocalAddress());
             //System.out.println(address.isReachable(2000));
 
