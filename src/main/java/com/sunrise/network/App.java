@@ -17,6 +17,8 @@ public class App {
         // testProxyConfig();
         //testProxySelector();
 
+        System.out.println((int)'\r');
+
     }
 
     // 测试proxySelector
