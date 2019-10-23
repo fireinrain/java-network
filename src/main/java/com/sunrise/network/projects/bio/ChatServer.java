@@ -23,7 +23,8 @@ public class ChatServer {
 
     private static AtomicInteger clientCount = new AtomicInteger();
     private static ExecutorService executorService = Executors.newScheduledThreadPool(4);
-    private static ConcurrentHashMap<String,Socket> handleClientSocketMap = new ConcurrentHashMap<>();
+    private static ConcurrentHashMap<String, Socket> handleClientSocketMap = new ConcurrentHashMap<>();
+
     //获取本机ip
     static {
         try {
@@ -39,16 +40,17 @@ public class ChatServer {
             ServerSocket serverSocket = new ServerSocket(PORT, WAIT_QUEUE, INET_ADDRESS);
             String bindIp = serverSocket.getInetAddress().getHostAddress();
             int port = serverSocket.getLocalPort();
-            System.out.println("|----------ChatServer listen at: " + bindIp + ":" + port+"----------|");
+            ConsoleUtils.log("ChatServer listen at: " + bindIp + ":" + port);
 
-            while (true){
+            while (true) {
                 Socket clientSocket = serverSocket.accept();
                 //客户端连接数量+1
                 int incrementAndGet = clientCount.incrementAndGet();
-                handleClientSocketMap.put(String.valueOf(incrementAndGet),clientSocket);
-                System.out.println("当前连接客户端数量为: " + incrementAndGet);
+
+                ConsoleUtils.log("New client added but not auth, now clients are: " + incrementAndGet);
                 //提交线程池
-                executorService.submit(new ClientSocketHandler(clientSocket));
+                executorService.submit(new ClientSocketHandler(String.valueOf(incrementAndGet), clientSocket));
+
             }
 
         } catch (IOException e) {
