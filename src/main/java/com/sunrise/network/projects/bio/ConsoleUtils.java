@@ -1,6 +1,8 @@
 package com.sunrise.network.projects.bio;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -12,6 +14,10 @@ import java.util.Locale;
 public class ConsoleUtils {
     private static String inputHead = "****** # ******";
     private static String serverLogHead = "|---------- # ----------|";
+    private static List<String> chatRuleList = Arrays.asList("@ people-name/id your-message",
+                                                            "# your-message",
+                                                            "$ all",
+                                                            "$ quit");
 
     /**
      * 美化console字符串
@@ -64,6 +70,23 @@ public class ConsoleUtils {
      */
     public static void log(String s) {
         String date = LocalDateTime.now().toString();
-        System.out.println(prettifyServerLog(s)+date);
+        System.out.println(prettifyServerLog(s) + date);
+    }
+
+    /**
+     * 发送聊天规则给客户端
+     */
+    public static String sendClientChatRuleTable() {
+        String rule = "********************************* Chat Rules *********************************";
+        String rule2 = "*******************| message format   |   means          |********************";
+        String rule3 = "*******************| # your-message   |   send public message|****************";
+        String rule4 = "******| @ people-name/id your-message |   send private message|***************";
+        String rule5 = "***************| $ all                |   get all auth people list|************";
+        String rule6 = "***************| $ quit               |   get all auth people list|************";
+        return rule + "\r\n" + rule2 + "\r\n" + rule3 + "\r\n" + rule4 + "\r\n" + rule5 + "\r\n" + rule6;
+    }
+
+    public static List<String> getChatRuleList() {
+        return chatRuleList;
     }
 }
