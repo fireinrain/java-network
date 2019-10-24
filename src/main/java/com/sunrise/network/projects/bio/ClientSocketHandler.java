@@ -4,8 +4,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 /**
  * @description: 客户端client处理器
@@ -77,10 +79,18 @@ public class ClientSocketHandler implements Runnable {
             ConsoleUtils.log("Now auth clients are: " + ChatServer.getHandleClientSocketMap().size());
 
             //发送聊天规则
-            String chatRulesForClient = getChatRulesForClient();
-            sendMsgToClient(outputStream,chatRulesForClient);
+            String chatRulesForClient = ConsoleUtils.sendClientChatRuleTable();
+            sendMsgToClient(outputStream, chatRulesForClient);
             //读取客户端发送消息
             String fromClient = readMsgFromClient(inputStream);
+
+            boolean ifClientMsg = checkIfClientMsg(fromClient);
+            while (!ifClientMsg) {
+                sendMsgToClient(outputStream, ConsoleUtils.prettifyInput("Invalid message format,Please check!"));
+                String msgFromClient = readMsgFromClient(inputStream);
+                ifClientMsg = checkIfClientMsg(msgFromClient);
+            }
+            //消息通过规则检测
 
             parseClientMsg(fromClient);
 
@@ -114,33 +124,45 @@ public class ClientSocketHandler implements Runnable {
 
     /**
      * 解析客户端发送来的字符串，是否符合规则
+     *
      * @param fromClient
      */
     private void parseClientMsg(String fromClient) {
     }
 
+    /**
+     * 校验客户端的信息是否是符合解析规则的
+     * 只有满足解析规则的 才会去解析
+     *
+     * @param fromClient
+     */
+    private boolean checkIfClientMsg(String fromClient) {
+        List<String> chatRuleList = ConsoleUtils.getChatRuleList();
+        List<String> collect = chatRuleList.stream()
+                .filter(e -> e.charAt(0) == fromClient.charAt(0))
+                .collect(Collectors.toList());
+        if (collect.size() <= 0) {
+            return false;
+        }
+        //获取匹配到的第一个
+        String ruleStr = collect.get(0);
+        String[] strings = ruleStr.split(" ");
+        String[] clientStrs = fromClient.split(" ");
+        if ((strings[0].equals(clientStrs[0]) && (strings.length == clientStrs.length))) {
+            return true;
+        }
+        return false;
+    }
+
 
     /**
      * 针对不同的客户端消息 分别处理
+     *
      * @param fromClient
      */
     private void handleClientMsg(String fromClient) {
     }
 
-
-    /**
-     * 私信
-     * 发送聊天规则给客户端
-     */
-    private String getChatRulesForClient() {
-        String rule =  "********************************* Chat Rules *********************************";
-        String rule2 = "*******************| message format   |   means          |********************";
-        String rule3 = "*******************| # your-message   |   send public message|****************";
-        String rule4 = "******| @ people-name/id your-message |   send private message|***************";
-        String rule5 = "***************| $ all                |   get all auth people list|************";
-
-        return rule + "\r\n" + rule2 + "\r\n" + rule3 + "\r\n" + rule4 + "\r\n" + rule5;
-    }
 
     /**
      * 告知所有的授权客户端，有客户端离开
