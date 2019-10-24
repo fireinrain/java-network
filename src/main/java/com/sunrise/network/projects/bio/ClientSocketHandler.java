@@ -157,6 +157,7 @@ public class ClientSocketHandler implements Runnable {
         String operateType = strings[0];
         switch (operateType) {
             case "@":
+                // TODO: 2019/10/25 对于消息的解析格式 有问题 
                 handleSecretChatClientMsg(strings[1], strings[2]);
                 break;
             case "#":
@@ -203,6 +204,7 @@ public class ClientSocketHandler implements Runnable {
             return false;
         }
         //获取匹配到的第一个
+        // TODO: 2019/10/25 如果message 中有空格 这种情况就会报错 
         String ruleStr = collect.get(0);
         String[] strings = ruleStr.split(" ");
         String[] clientStrs = fromClient.split(" ");
