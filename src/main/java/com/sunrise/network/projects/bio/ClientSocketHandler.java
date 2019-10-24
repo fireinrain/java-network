@@ -64,9 +64,25 @@ public class ClientSocketHandler implements Runnable {
                 sendMsgToClient(outputStream, discMsg);
                 throw new AuthException("Auth exception!");
             }
+
+            // 提示校验成功   授权成功
+            String successAuth = "Authorized success! Let's chat with others";
+            sendMsgToClient(outputStream, ConsoleUtils.prettifyInput(successAuth));
+
+            //告知所有授权客户端 来人啦(不发给自己)
+            sendEnterChatToClients(this.userName);
+
             //如果授权成功,将其加入到socketMap中
-            ChatServer.getHandleClientSocketMap().put(this.clientId+"&"+this.userName, clientSocket);
-            ConsoleUtils.log("Now auth clients are: "+ ChatServer.getHandleClientSocketMap().size());
+            ChatServer.getHandleClientSocketMap().put(this.clientId + "&" + this.userName, clientSocket);
+            ConsoleUtils.log("Now auth clients are: " + ChatServer.getHandleClientSocketMap().size());
+
+            //发送聊天规则
+            String chatRulesForClient = getChatRulesForClient();
+            sendMsgToClient(outputStream,chatRulesForClient);
+            //读取客户端发送消息
+            String fromClient = readMsgFromClient(inputStream);
+
+            parseClientMsg(fromClient);
 
 
         } catch (IOException | AuthException e) {
@@ -96,15 +112,63 @@ public class ClientSocketHandler implements Runnable {
         ConsoleUtils.log("Client online count: " + size);
     }
 
-    //当某个用户离开时，给其余的在线的人发送某人离开的消息
+    /**
+     * 解析客户端发送来的字符串，是否符合规则
+     * @param fromClient
+     */
+    private void parseClientMsg(String fromClient) {
+    }
+
+
+    /**
+     * 针对不同的客户端消息 分别处理
+     * @param fromClient
+     */
+    private void handleClientMsg(String fromClient) {
+    }
+
+
+    /**
+     * 私信
+     * 发送聊天规则给客户端
+     */
+    private String getChatRulesForClient() {
+        String rule =  "********************************* Chat Rules *********************************";
+        String rule2 = "*******************| message format   |   means          |********************";
+        String rule3 = "*******************| # your-message   |   send public message|****************";
+        String rule4 = "******| @ people-name/id your-message |   send private message|***************";
+        String rule5 = "***************| $ all                |   get all auth people list|************";
+
+        return rule + "\r\n" + rule2 + "\r\n" + rule3 + "\r\n" + rule4 + "\r\n" + rule5;
+    }
+
+    /**
+     * 告知所有的授权客户端，有客户端离开
+     *
+     * @param userName
+     */
     private void sendLeaveChatToClients(String userName) {
+        sendMsgChatToClients(userName, "leave the chat");
+    }
+
+    private void sendEnterChatToClients(String userName) {
+        sendMsgChatToClients(userName, "enter the chat");
+    }
+
+    /**
+     * 给所有授权的客户端发送消息
+     *
+     * @param userName
+     * @param message
+     */
+    private void sendMsgChatToClients(String userName, String message) {
         ConcurrentHashMap<String, Socket> handleClientSocketMap = ChatServer.getHandleClientSocketMap();
         for (Map.Entry<String, Socket> clientSocket : handleClientSocketMap.entrySet()) {
             //String clientId = clientSocket.getKey();
             Socket socket = clientSocket.getValue();
             try {
                 OutputStream outputStream = socket.getOutputStream();
-                sendMsgToClient(outputStream,userName+"leave the chat");
+                sendMsgToClient(outputStream, userName + " " + message);
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -112,9 +176,9 @@ public class ClientSocketHandler implements Runnable {
     }
 
 
-
     /**
      * 检查秘钥是否正确
+     *
      * @param key
      * @return
      */
