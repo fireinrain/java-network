@@ -39,7 +39,16 @@ public class ClientSocketHandler implements Runnable {
             String nickName = ConsoleUtils.prettifyInput("Please input your nickname to chat with others?");
             sendMsgToClient(outputStream, nickName);
             //获取客户端发送的nickName
-            this.userName = readMsgFromClient(inputStream);
+            String userNickName = readMsgFromClient(inputStream);
+            //校验名字内部不能有非法字符 如&
+            boolean nicknameValid = checkNicknameValid(userNickName);
+            while (!nicknameValid) {
+                sendMsgToClient(outputStream, "Name can't contains &!!!");
+                String s = readMsgFromClient(inputStream);
+                nicknameValid = checkNicknameValid(s);
+            }
+
+            this.userName = userNickName;
             //输入密钥
             String inputSecreteKey = ConsoleUtils.prettifyInput("Please input your secret key. You have 3 chances");
             sendMsgToClient(outputStream, inputSecreteKey);
@@ -84,20 +93,22 @@ public class ClientSocketHandler implements Runnable {
             //读取客户端发送消息
             String fromClient = readMsgFromClient(inputStream);
 
-            boolean ifClientMsg = checkIfClientMsg(fromClient);
-            while (!ifClientMsg) {
-                sendMsgToClient(outputStream, ConsoleUtils.prettifyInput("Invalid message format,Please check!"));
-                String msgFromClient = readMsgFromClient(inputStream);
-                ifClientMsg = checkIfClientMsg(msgFromClient);
+            while (true) {
+                boolean ifClientMsg = checkIfClientMsg(fromClient);
+                while (!ifClientMsg) {
+                    sendMsgToClient(outputStream, ConsoleUtils.prettifyInput("Invalid message format,Please check!"));
+                    String msgFromClient = readMsgFromClient(inputStream);
+                    ifClientMsg = checkIfClientMsg(msgFromClient);
+                }
+                //消息通过规则检测
+                parseAndHandleClientMsg(fromClient);
+                fromClient = readMsgFromClient(inputStream);
             }
-            //消息通过规则检测
-
-            parseClientMsg(fromClient);
 
 
-        } catch (IOException | AuthException e) {
+        } catch (IOException | AuthException | ClientQuitException e) {
             //e.printStackTrace();
-            ConsoleUtils.log(e.getMessage());
+            ConsoleUtils.log(ConsoleUtils.prettifyInput(e.getMessage()));
         }
 
 
@@ -113,7 +124,9 @@ public class ClientSocketHandler implements Runnable {
 
         } catch (IOException e) {
             // TODO Auto-generated catch block
-            e.printStackTrace();
+            //e.printStackTrace();
+            ConsoleUtils.log(ConsoleUtils.prettifyInput(e.getMessage()));
+
         }
 
         ConsoleUtils.log("handle finish");
@@ -123,12 +136,57 @@ public class ClientSocketHandler implements Runnable {
     }
 
     /**
+     * 校验name字符是否包含非法字符&
+     * 因为在客户端map中使用了 id&name 来作为key
+     *
+     * @param userNickName
+     * @return
+     */
+    private boolean checkNicknameValid(String userNickName) {
+        return !userNickName.contains("&");
+    }
+
+    /**
      * 解析客户端发送来的字符串，是否符合规则
      *
      * @param fromClient
      */
-    private void parseClientMsg(String fromClient) {
+    private void parseAndHandleClientMsg(String fromClient) throws ClientQuitException {
+        String[] strings = fromClient.split(" ");
+        //第一位为操作类型标志
+        String operateType = strings[0];
+        switch (operateType) {
+            case "@":
+                handleSecretChatClientMsg(strings[1], strings[2]);
+                break;
+            case "#":
+                sendMsgChatToClients(this.userName, strings[1],true);
+                break;
+            case "$":
+                if (strings[1].equals("all")) {
+                    handleQueryAllClients(this.clientSocket);
+                }
+                if (strings[1].equals("quit")) {
+                    //退出
+                    throw new ClientQuitException("Client quit by self");
+
+                }
+                break;
+            default:
+                sendMsgToClient(this.outputStream, ConsoleUtils.prettifyInput("Unsurpport operation!!!"));
+        }
     }
+
+    private void handleQueryAllClients(Socket clientSocket) {
+        try {
+            OutputStream outputStream = clientSocket.getOutputStream();
+            String allAuthClient = ConsoleUtils.getAllAuthClient(ChatServer.getHandleClientSocketMap());
+            sendMsgToClient(outputStream, allAuthClient);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
 
     /**
      * 校验客户端的信息是否是符合解析规则的
@@ -156,11 +214,46 @@ public class ClientSocketHandler implements Runnable {
 
 
     /**
-     * 针对不同的客户端消息 分别处理
+     * 给某个客户端私密消息
      *
-     * @param fromClient
+     * @param idOrName
+     * @param message
      */
-    private void handleClientMsg(String fromClient) {
+    private void handleSecretChatClientMsg(String idOrName, String message) {
+        Integer userId = null;
+        ConcurrentHashMap<String, Socket> handleClientSocketMap = ChatServer.getHandleClientSocketMap();
+        try {
+            userId = Integer.valueOf(idOrName);
+        } catch (NumberFormatException e) {
+            //e.printStackTrace();
+            ConsoleUtils.log(e.getMessage());
+            ConsoleUtils.log(ConsoleUtils.prettifyInput("Client chat use userName: " + userName));
+        }
+        if (userId != null) {
+            //使用userId
+            for (Map.Entry<String, Socket> clientSocket : handleClientSocketMap.entrySet()) {
+                if (clientSocket.getKey().split("&")[0].equals(userId)) {
+                    try {
+                        OutputStream outputStream = clientSocket.getValue().getOutputStream();
+                        sendMsgToClient(outputStream, message);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        } else {
+            //使用userName
+            for (Map.Entry<String, Socket> clientSocket : handleClientSocketMap.entrySet()) {
+                if (clientSocket.getKey().split("&")[1].equals(userName)) {
+                    try {
+                        OutputStream outputStream = clientSocket.getValue().getOutputStream();
+                        sendMsgToClient(outputStream, message);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
     }
 
 
@@ -170,29 +263,35 @@ public class ClientSocketHandler implements Runnable {
      * @param userName
      */
     private void sendLeaveChatToClients(String userName) {
-        sendMsgChatToClients(userName, "leave the chat");
+        sendMsgChatToClients(userName, "leave the chat",true);
     }
 
     private void sendEnterChatToClients(String userName) {
-        sendMsgChatToClients(userName, "enter the chat");
+        sendMsgChatToClients(userName, "enter the chat",true);
     }
 
     /**
      * 给所有授权的客户端发送消息
-     *
      * @param userName
      * @param message
+     * @param exceptSelf 是否排除自己
      */
-    private void sendMsgChatToClients(String userName, String message) {
+    private void sendMsgChatToClients(String userName, String message,boolean exceptSelf) {
         ConcurrentHashMap<String, Socket> handleClientSocketMap = ChatServer.getHandleClientSocketMap();
         for (Map.Entry<String, Socket> clientSocket : handleClientSocketMap.entrySet()) {
             //String clientId = clientSocket.getKey();
             Socket socket = clientSocket.getValue();
+            if (exceptSelf){
+                if (this.clientSocket == socket){
+                    continue;
+                }
+            }
             try {
                 OutputStream outputStream = socket.getOutputStream();
-                sendMsgToClient(outputStream, userName + " " + message);
+                sendMsgToClient(outputStream, userName + ": " + message);
             } catch (IOException e) {
-                e.printStackTrace();
+                //e.printStackTrace();
+                ConsoleUtils.log(ConsoleUtils.prettifyInput(e.getMessage()));
             }
         }
     }

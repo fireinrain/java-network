@@ -17,7 +17,8 @@ public class App {
         // testProxyConfig();
         //testProxySelector();
 
-        System.out.println((int)'\r');
+        //System.out.println((int)'\r');
+        System.out.println(Integer.valueOf("we"));
 
     }
 

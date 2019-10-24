@@ -1,9 +1,11 @@
 package com.sunrise.network.projects.bio;
 
+import java.net.Socket;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Locale;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @description:
@@ -15,9 +17,9 @@ public class ConsoleUtils {
     private static String inputHead = "****** # ******";
     private static String serverLogHead = "|---------- # ----------|";
     private static List<String> chatRuleList = Arrays.asList("@ people-name/id your-message",
-                                                            "# your-message",
-                                                            "$ all",
-                                                            "$ quit");
+            "# your-message",
+            "$ all",
+            "$ quit");
 
     /**
      * 美化console字符串
@@ -86,7 +88,38 @@ public class ConsoleUtils {
         return rule + "\r\n" + rule2 + "\r\n" + rule3 + "\r\n" + rule4 + "\r\n" + rule5 + "\r\n" + rule6;
     }
 
+    /**
+     * 获取聊天规则列表
+     *
+     * @return
+     */
     public static List<String> getChatRuleList() {
         return chatRuleList;
+    }
+
+    /**
+     * 获取所有在线客户，并组成字符串
+     *
+     * @param hashMap
+     * @return
+     */
+    public static String getAllAuthClient(ConcurrentHashMap<String, Socket> hashMap) {
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append("------(id  /  nickName)------");
+        stringBuilder.append("\r\n");
+        for (Map.Entry<String, Socket> clientSocket : hashMap.entrySet()) {
+            String key = clientSocket.getKey();
+            String[] idAndName = key.split("&");
+
+            stringBuilder.append("|   ");
+            stringBuilder.append(idAndName[0]);
+            stringBuilder.append("  ");
+            stringBuilder.append("/  ");
+            stringBuilder.append(idAndName[1]);
+            stringBuilder.append("    |");
+            stringBuilder.append("\r\n");
+        }
+        stringBuilder.append("---------------------");
+        return stringBuilder.toString();
     }
 }
