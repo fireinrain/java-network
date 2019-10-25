@@ -16,10 +16,20 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ConsoleUtils {
     private static String inputHead = "****** # ******";
     private static String serverLogHead = "|---------- # ----------|";
+    /**
+     * 支持的功能
+     * 1. 创建聊天群
+     * 2. 支持他人申请进入聊天群
+     * 3  支持群主主动踢人
+     * 4  支持主动退群
+     * 5  支持在线搜索群
+     * 6  支持在线搜索人
+     * 7  支持发送点对点私密消息
+     */
     private static List<String> chatRuleList = Arrays.asList("@ people-name/id your-message",
-            "# your-message",
-            "$ all",
-            "$ quit");
+            "@ your-message",
+            "# all",
+            "# quit");
 
     /**
      * 美化console字符串
@@ -81,10 +91,10 @@ public class ConsoleUtils {
     public static String sendClientChatRuleTable() {
         String rule = "********************************* Chat Rules *********************************";
         String rule2 = "*******************| message format   |   means          |********************";
-        String rule3 = "*******************| # your-message   |   send public message|****************";
+        String rule3 = "*******************| @ your-message   |   send public message|****************";
         String rule4 = "******| @ people-name/id your-message |   send private message|***************";
-        String rule5 = "***************| $ all                |   get all auth people list|************";
-        String rule6 = "***************| $ quit               |   get all auth people list|************";
+        String rule5 = "***************| # all                |   get all auth people list|************";
+        String rule6 = "***************| # quit               |   get all auth people list|************";
         return rule + "\r\n" + rule2 + "\r\n" + rule3 + "\r\n" + rule4 + "\r\n" + rule5 + "\r\n" + rule6;
     }
 

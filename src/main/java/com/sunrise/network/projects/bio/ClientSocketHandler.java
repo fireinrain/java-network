@@ -161,9 +161,9 @@ public class ClientSocketHandler implements Runnable {
                 handleSecretChatClientMsg(strings[1], strings[2]);
                 break;
             case "#":
-                sendMsgChatToClients(this.userName, strings[1],true);
+                sendMsgChatToClients(this.userName, strings[1], true);
                 break;
-            case "$":
+            case "#":
                 if (strings[1].equals("all")) {
                     handleQueryAllClients(this.clientSocket);
                 }
@@ -198,7 +198,8 @@ public class ClientSocketHandler implements Runnable {
     private boolean checkIfClientMsg(String fromClient) {
         List<String> chatRuleList = ConsoleUtils.getChatRuleList();
         List<String> collect = chatRuleList.stream()
-                .filter(e -> e.charAt(0) == fromClient.charAt(0))
+                //必须含有 command xxx
+                .filter(e -> e.charAt(0) == fromClient.charAt(0) && e.charAt(1) == fromClient.charAt(1))
                 .collect(Collectors.toList());
         if (collect.size() <= 0) {
             return false;
@@ -206,6 +207,8 @@ public class ClientSocketHandler implements Runnable {
         //获取匹配到的第一个
         // TODO: 2019/10/25 如果message 中有空格 这种情况就会报错 
         String ruleStr = collect.get(0);
+        int indexOfSpace = collect.indexOf(" ");
+
         String[] strings = ruleStr.split(" ");
         String[] clientStrs = fromClient.split(" ");
         if ((strings[0].equals(clientStrs[0]) && (strings.length == clientStrs.length))) {
@@ -265,26 +268,27 @@ public class ClientSocketHandler implements Runnable {
      * @param userName
      */
     private void sendLeaveChatToClients(String userName) {
-        sendMsgChatToClients(userName, "leave the chat",true);
+        sendMsgChatToClients(userName, "leave the chat", true);
     }
 
     private void sendEnterChatToClients(String userName) {
-        sendMsgChatToClients(userName, "enter the chat",true);
+        sendMsgChatToClients(userName, "enter the chat", true);
     }
 
     /**
      * 给所有授权的客户端发送消息
+     *
      * @param userName
      * @param message
      * @param exceptSelf 是否排除自己
      */
-    private void sendMsgChatToClients(String userName, String message,boolean exceptSelf) {
+    private void sendMsgChatToClients(String userName, String message, boolean exceptSelf) {
         ConcurrentHashMap<String, Socket> handleClientSocketMap = ChatServer.getHandleClientSocketMap();
         for (Map.Entry<String, Socket> clientSocket : handleClientSocketMap.entrySet()) {
             //String clientId = clientSocket.getKey();
             Socket socket = clientSocket.getValue();
-            if (exceptSelf){
-                if (this.clientSocket == socket){
+            if (exceptSelf) {
+                if (this.clientSocket == socket) {
                     continue;
                 }
             }
