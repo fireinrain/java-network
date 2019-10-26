@@ -24,7 +24,7 @@ public class ConsoleUtils {
      * 7  支持发送点对点私密消息
      */
     private static List<Pattern> chatRuleList = Arrays.asList(
-            Pattern.compile("^@ ([\\w+|^all]|\\d+) (.+)$"),
+            Pattern.compile("^@ (\\w+|\\d+) (.+)$"),
             Pattern.compile("^@ all (.+)$"),
             Pattern.compile("^# all$"),
             Pattern.compile("^# quit$"));
