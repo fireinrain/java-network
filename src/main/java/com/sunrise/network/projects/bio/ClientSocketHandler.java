@@ -4,9 +4,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.util.Enumeration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -36,16 +39,24 @@ public class ClientSocketHandler implements Runnable {
             String welcomeStr = ConsoleUtils.prettifyInput("Welcome to sunrise ChatServe!");
 
             sendMsgToClient(outputStream, welcomeStr);
-            String nickName = ConsoleUtils.prettifyInput("Please input your nickname to chat with others?");
+            String nickName = ConsoleUtils.prettifyInput("Please input your nickname to chat with others(length >= 4 chars)");
             sendMsgToClient(outputStream, nickName);
             //获取客户端发送的nickName
             String userNickName = readMsgFromClient(inputStream);
             //校验名字内部不能有非法字符 如&
             boolean nicknameValid = checkNicknameValid(userNickName);
-            while (!nicknameValid) {
-                sendMsgToClient(outputStream, "Name can't contains &!!!");
-                String s = readMsgFromClient(inputStream);
-                nicknameValid = checkNicknameValid(s);
+            boolean checkNickNameRepeate = checkNickNameRepeate(userNickName);
+            while (!(nicknameValid && !checkNickNameRepeate)) {
+                if (!nicknameValid) {
+                    sendMsgToClient(outputStream, ">>> Name can't contains & and length >= 4 chars");
+                    userNickName = readMsgFromClient(inputStream);
+                    nicknameValid = checkNicknameValid(userNickName);
+                }
+                if (checkNickNameRepeate) {
+                    sendMsgToClient(outputStream, ">>> Name has been taken, please choose another one");
+                    userNickName = readMsgFromClient(inputStream);
+                    checkNickNameRepeate = checkNickNameRepeate(userNickName);
+                }
             }
 
             this.userName = userNickName;
@@ -71,7 +82,7 @@ public class ClientSocketHandler implements Runnable {
             }
 
             if (inputChance > 2) {
-                String discMsg = "You have input wrong key 3 times,Bye!";
+                String discMsg = ">>> You have input wrong key 3 times,Bye!";
                 sendMsgToClient(outputStream, discMsg);
                 throw new AuthException("Auth exception!");
             }
@@ -92,16 +103,16 @@ public class ClientSocketHandler implements Runnable {
             sendMsgToClient(outputStream, chatRulesForClient);
             //读取客户端发送消息
             String fromClient = readMsgFromClient(inputStream);
-
+            Pattern pattern = null;
             while (true) {
-                boolean ifClientMsg = checkIfClientMsg(fromClient);
-                while (!ifClientMsg) {
+                pattern = checkIfClientMsg(fromClient);
+                while (pattern == null) {
                     sendMsgToClient(outputStream, ConsoleUtils.prettifyInput("Invalid message format,Please check!"));
-                    String msgFromClient = readMsgFromClient(inputStream);
-                    ifClientMsg = checkIfClientMsg(msgFromClient);
+                    fromClient = readMsgFromClient(inputStream);
+                    pattern = checkIfClientMsg(fromClient);
                 }
                 //消息通过规则检测
-                parseAndHandleClientMsg(fromClient);
+                parseAndHandleClientMsg(pattern, fromClient);
                 fromClient = readMsgFromClient(inputStream);
             }
 
@@ -118,7 +129,7 @@ public class ClientSocketHandler implements Runnable {
             outputStream.close();
             this.clientSocket.close();
             //将当前已经关闭的客户端从容器中移除
-            ChatServer.getHandleClientSocketMap().remove(clientId);
+            ChatServer.getHandleClientSocketMap().remove(this.clientId + "&" + this.userName);
             //给所有客户端发送 该用户下线的消息
             sendLeaveChatToClients(this.userName);
 
@@ -135,6 +146,16 @@ public class ClientSocketHandler implements Runnable {
         ConsoleUtils.log("Client online count: " + size);
     }
 
+    private boolean checkNickNameRepeate(String userNickName) {
+        Enumeration<String> keys = ChatServer.getHandleClientSocketMap().keys();
+        while (keys.hasMoreElements()) {
+            if (keys.nextElement().split("&")[1].equals(userNickName)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /**
      * 校验name字符是否包含非法字符&
      * 因为在客户端map中使用了 id&name 来作为key
@@ -143,7 +164,7 @@ public class ClientSocketHandler implements Runnable {
      * @return
      */
     private boolean checkNicknameValid(String userNickName) {
-        return !userNickName.contains("&");
+        return !userNickName.contains("&") && userNickName.length() >= 4;
     }
 
     /**
@@ -151,28 +172,30 @@ public class ClientSocketHandler implements Runnable {
      *
      * @param fromClient
      */
-    private void parseAndHandleClientMsg(String fromClient) throws ClientQuitException {
-        String[] strings = fromClient.split(" ");
-        //第一位为操作类型标志
-        String operateType = strings[0];
-        switch (operateType) {
-            case "@":
-                // TODO: 2019/10/25 对于消息的解析格式 有问题 
-                handleSecretChatClientMsg(strings[1], strings[2]);
-                break;
-            case "#":
-                sendMsgChatToClients(this.userName, strings[1], true);
-                break;
-            case "#":
-                if (strings[1].equals("all")) {
-                    handleQueryAllClients(this.clientSocket);
+    private void parseAndHandleClientMsg(Pattern msgPattern, String fromClient) throws ClientQuitException {
+        Matcher matcher = msgPattern.matcher(fromClient);
+        String pattern = matcher.pattern().pattern();
+        switch (pattern.charAt(1)) {
+            case '@':
+                if (matcher.groupCount() == 2) {
+                    String group1 = matcher.group(1);
+                    String group2 = matcher.group(2);
+                    handleSecretChatClientMsg(matcher.group(1), matcher.group(2));
+                    break;
                 }
-                if (strings[1].equals("quit")) {
+                if (matcher.groupCount() == 1) {
+                    sendMsgChatToClients(this.userName, matcher.group(1), true);
+                    break;
+                }
+            case '#':
+                if (pattern.contains("all")) {
+                    handleQueryAllClients(this.clientSocket);
+                    break;
+                }
+                if (pattern.contains("quit")) {
                     //退出
                     throw new ClientQuitException("Client quit by self");
-
                 }
-                break;
             default:
                 sendMsgToClient(this.outputStream, ConsoleUtils.prettifyInput("Unsurpport operation!!!"));
         }
@@ -181,10 +204,11 @@ public class ClientSocketHandler implements Runnable {
     private void handleQueryAllClients(Socket clientSocket) {
         try {
             OutputStream outputStream = clientSocket.getOutputStream();
-            String allAuthClient = ConsoleUtils.getAllAuthClient(ChatServer.getHandleClientSocketMap());
+            String allAuthClient = ConsoleUtils.getAllAuthClient(ChatServer.getHandleClientSocketMap().keys(), this.clientId + "&" + this.userName);
             sendMsgToClient(outputStream, allAuthClient);
         } catch (IOException e) {
-            e.printStackTrace();
+            //e.printStackTrace();
+            ConsoleUtils.log(ConsoleUtils.prettifyInput(e.getMessage()));
         }
     }
 
@@ -192,29 +216,22 @@ public class ClientSocketHandler implements Runnable {
     /**
      * 校验客户端的信息是否是符合解析规则的
      * 只有满足解析规则的 才会去解析
+     * 文本的解析规则 最好抽象成  正则表达式，这样才能满足林火新 和全面性
      *
      * @param fromClient
      */
-    private boolean checkIfClientMsg(String fromClient) {
-        List<String> chatRuleList = ConsoleUtils.getChatRuleList();
-        List<String> collect = chatRuleList.stream()
+    private Pattern checkIfClientMsg(String fromClient) {
+        List<Pattern> collect = ConsoleUtils.getChatRuleList()
+                .stream()
                 //必须含有 command xxx
-                .filter(e -> e.charAt(0) == fromClient.charAt(0) && e.charAt(1) == fromClient.charAt(1))
+                .filter(e -> e.matcher(fromClient).matches())
                 .collect(Collectors.toList());
         if (collect.size() <= 0) {
-            return false;
+            return null;
         }
         //获取匹配到的第一个
-        // TODO: 2019/10/25 如果message 中有空格 这种情况就会报错 
-        String ruleStr = collect.get(0);
-        int indexOfSpace = collect.indexOf(" ");
-
-        String[] strings = ruleStr.split(" ");
-        String[] clientStrs = fromClient.split(" ");
-        if ((strings[0].equals(clientStrs[0]) && (strings.length == clientStrs.length))) {
-            return true;
-        }
-        return false;
+        // TODO: 2019/10/25 如果message 中有空格 这种情况就会报错
+        return collect.get(0);
     }
 
 
@@ -232,30 +249,24 @@ public class ClientSocketHandler implements Runnable {
         } catch (NumberFormatException e) {
             //e.printStackTrace();
             ConsoleUtils.log(e.getMessage());
-            ConsoleUtils.log(ConsoleUtils.prettifyInput("Client chat use userName: " + userName));
         }
         if (userId != null) {
-            //使用userId
-            for (Map.Entry<String, Socket> clientSocket : handleClientSocketMap.entrySet()) {
-                if (clientSocket.getKey().split("&")[0].equals(userId)) {
-                    try {
-                        OutputStream outputStream = clientSocket.getValue().getOutputStream();
-                        sendMsgToClient(outputStream, message);
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
+            ConsoleUtils.log(ConsoleUtils.prettifyInput("Client chat use userId: " + userId));
         } else {
-            //使用userName
-            for (Map.Entry<String, Socket> clientSocket : handleClientSocketMap.entrySet()) {
-                if (clientSocket.getKey().split("&")[1].equals(userName)) {
-                    try {
-                        OutputStream outputStream = clientSocket.getValue().getOutputStream();
-                        sendMsgToClient(outputStream, message);
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
+            ConsoleUtils.log(ConsoleUtils.prettifyInput("Client chat use userName: " + idOrName));
+        }
+        //使用userId
+        for (Map.Entry<String, Socket> clientSocket : handleClientSocketMap.entrySet()) {
+            boolean equalsUserId = clientSocket.getKey().split("&")[0].equals(String.valueOf(idOrName));
+            boolean equalsUsername = clientSocket.getKey().split("&")[1].equals(idOrName);
+            if (equalsUserId || equalsUsername) {
+                try {
+                    OutputStream outputStream = clientSocket.getValue().getOutputStream();
+                    sendMsgToClient(outputStream, message);
+                    return;
+                } catch (IOException e) {
+                    //e.printStackTrace();
+                    ConsoleUtils.log(ConsoleUtils.prettifyInput(e.getMessage()));
                 }
             }
         }
@@ -268,11 +279,11 @@ public class ClientSocketHandler implements Runnable {
      * @param userName
      */
     private void sendLeaveChatToClients(String userName) {
-        sendMsgChatToClients(userName, "leave the chat", true);
+        sendMsgChatToClients(userName, ">>> leave the chat", true);
     }
 
     private void sendEnterChatToClients(String userName) {
-        sendMsgChatToClients(userName, "enter the chat", true);
+        sendMsgChatToClients(userName, ">>> enter the chat", true);
     }
 
     /**
@@ -348,7 +359,8 @@ public class ClientSocketHandler implements Runnable {
             outputStream.write("\n".getBytes());
             outputStream.flush();
         } catch (IOException e) {
-            e.printStackTrace();
+            //e.printStackTrace();
+            ConsoleUtils.log(ConsoleUtils.prettifyInput(e.getMessage()));
         }
     }
 }

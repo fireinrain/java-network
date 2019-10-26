@@ -19,7 +19,7 @@ public class ChatServer {
     private static InetAddress INET_ADDRESS;
     private static final int WAIT_QUEUE = 100;
     private static final int PORT = 8080;
-    private static final String secreteKey = "chatwithme";
+    private static final String secreteKey = "chat";
 
     private static AtomicInteger clientCount = new AtomicInteger();
     private static ExecutorService executorService = Executors.newScheduledThreadPool(4);

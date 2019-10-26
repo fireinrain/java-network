@@ -2,10 +2,9 @@ package com.sunrise.network.projects.bio;
 
 import java.net.Socket;
 import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Pattern;
 
 /**
  * @description:
@@ -26,10 +25,11 @@ public class ConsoleUtils {
      * 6  支持在线搜索人
      * 7  支持发送点对点私密消息
      */
-    private static List<String> chatRuleList = Arrays.asList("@ people-name/id your-message",
-            "@ your-message",
-            "# all",
-            "# quit");
+    private static List<Pattern> chatRuleList = Arrays.asList(
+            Pattern.compile("^@ (\\w+|\\d+) (.+)$"),
+            Pattern.compile("^@ all (.+)$"),
+            Pattern.compile("^# all$"),
+            Pattern.compile("^# quit$"));
 
     /**
      * 美化console字符串
@@ -103,7 +103,7 @@ public class ConsoleUtils {
      *
      * @return
      */
-    public static List<String> getChatRuleList() {
+    public static List<Pattern> getChatRuleList() {
         return chatRuleList;
     }
 
@@ -111,21 +111,30 @@ public class ConsoleUtils {
      * 获取所有在线客户，并组成字符串
      *
      * @param hashMap
+     * @param myKey
      * @return
      */
-    public static String getAllAuthClient(ConcurrentHashMap<String, Socket> hashMap) {
+    public static String getAllAuthClient(Enumeration<String> hashMapKeys, String myKey) {
         StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append("------(id  /  nickName)------");
+        stringBuilder.append("------(id  ////  nickName)------");
         stringBuilder.append("\r\n");
-        for (Map.Entry<String, Socket> clientSocket : hashMap.entrySet()) {
-            String key = clientSocket.getKey();
-            String[] idAndName = key.split("&");
 
+        ArrayList<String[]> idAndNameList = new ArrayList<>();
+        while (hashMapKeys.hasMoreElements()) {
+            String[] idAndName = hashMapKeys.nextElement().split("&");
+            idAndNameList.add(idAndName);
+
+        }
+        idAndNameList.sort(Comparator.comparingInt(o -> Integer.parseInt(o[0])));
+        for (String[] key : idAndNameList) {
             stringBuilder.append("|   ");
-            stringBuilder.append(idAndName[0]);
+            stringBuilder.append(key[0]);
             stringBuilder.append("  ");
-            stringBuilder.append("/  ");
-            stringBuilder.append(idAndName[1]);
+            stringBuilder.append("////  ");
+            stringBuilder.append(key[1]);
+            if (key[1].equals(myKey.split("&")[1].trim())) {
+                stringBuilder.append(" (****)");
+            }
             stringBuilder.append("    |");
             stringBuilder.append("\r\n");
         }
