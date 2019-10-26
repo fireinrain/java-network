@@ -8,7 +8,6 @@ import java.util.Enumeration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -102,9 +101,10 @@ public class ClientSocketHandler implements Runnable {
             String chatRulesForClient = ConsoleUtils.sendClientChatRuleTable();
             sendMsgToClient(outputStream, chatRulesForClient);
             //读取客户端发送消息
-            String fromClient = readMsgFromClient(inputStream);
-            Pattern pattern = null;
+            Pattern pattern;
+            String fromClient;
             while (true) {
+                fromClient = readMsgFromClient(inputStream);
                 pattern = checkIfClientMsg(fromClient);
                 while (pattern == null) {
                     sendMsgToClient(outputStream, ConsoleUtils.prettifyInput("Invalid message format,Please check!"));
@@ -112,8 +112,7 @@ public class ClientSocketHandler implements Runnable {
                     pattern = checkIfClientMsg(fromClient);
                 }
                 //消息通过规则检测
-                parseAndHandleClientMsg(pattern, fromClient);
-                fromClient = readMsgFromClient(inputStream);
+                parseAndHandleClientMsg(fromClient);
             }
 
 
@@ -172,33 +171,32 @@ public class ClientSocketHandler implements Runnable {
      *
      * @param fromClient
      */
-    private void parseAndHandleClientMsg(Pattern msgPattern, String fromClient) throws ClientQuitException {
-        Matcher matcher = msgPattern.matcher(fromClient);
-        String pattern = matcher.pattern().pattern();
-        switch (pattern.charAt(1)) {
-            case '@':
-                if (matcher.groupCount() == 2) {
-                    String group1 = matcher.group(1);
-                    String group2 = matcher.group(2);
-                    handleSecretChatClientMsg(matcher.group(1), matcher.group(2));
-                    break;
-                }
-                if (matcher.groupCount() == 1) {
-                    sendMsgChatToClients(this.userName, matcher.group(1), true);
-                    break;
-                }
-            case '#':
-                if (pattern.contains("all")) {
-                    handleQueryAllClients(this.clientSocket);
-                    break;
-                }
-                if (pattern.contains("quit")) {
-                    //退出
-                    throw new ClientQuitException("Client quit by self");
-                }
-            default:
-                sendMsgToClient(this.outputStream, ConsoleUtils.prettifyInput("Unsurpport operation!!!"));
+    private void parseAndHandleClientMsg(String fromClient) throws ClientQuitException {
+        if (fromClient.startsWith("@ ")){
+            String[] msg = fromClient.split(" ", 3);
+            if (msg[1].equals("all")){
+                handleAllChatClientMsg(msg[2]);
+                //try {
+                //    Thread.sleep(10);
+                //} catch (InterruptedException e) {
+                //    e.printStackTrace();
+                //}
+                return;
+            }else {
+                String nameOrId = msg[1];
+                handleSecretChatClientMsg(nameOrId,msg[2]);
+                return;
+            }
         }
+        if (fromClient.equals("# all")){
+            handleQueryAllClients(this.clientSocket);
+            return;
+        }
+        if (fromClient.equals("# quit")){
+            throw new ClientQuitException("Client quit by self");
+        }
+        sendMsgToClient(this.outputStream, ConsoleUtils.prettifyInput("Unsurpport operation!!!"));
+
     }
 
     private void handleQueryAllClients(Socket clientSocket) {
@@ -230,7 +228,6 @@ public class ClientSocketHandler implements Runnable {
             return null;
         }
         //获取匹配到的第一个
-        // TODO: 2019/10/25 如果message 中有空格 这种情况就会报错
         return collect.get(0);
     }
 
@@ -242,6 +239,9 @@ public class ClientSocketHandler implements Runnable {
      * @param message
      */
     private void handleSecretChatClientMsg(String idOrName, String message) {
+        if (idOrName.equals(this.userName)|| idOrName.equals(this.clientId)){
+            return;
+        }
         Integer userId = null;
         ConcurrentHashMap<String, Socket> handleClientSocketMap = ChatServer.getHandleClientSocketMap();
         try {
@@ -256,20 +256,29 @@ public class ClientSocketHandler implements Runnable {
             ConsoleUtils.log(ConsoleUtils.prettifyInput("Client chat use userName: " + idOrName));
         }
         //使用userId
-        for (Map.Entry<String, Socket> clientSocket : handleClientSocketMap.entrySet()) {
-            boolean equalsUserId = clientSocket.getKey().split("&")[0].equals(String.valueOf(idOrName));
-            boolean equalsUsername = clientSocket.getKey().split("&")[1].equals(idOrName);
+        for (Map.Entry<String, Socket>  socketEntry: handleClientSocketMap.entrySet()) {
+            boolean equalsUserId = socketEntry.getKey().split("&")[0].equals(idOrName);
+            boolean equalsUsername = socketEntry.getKey().split("&")[1].equals(idOrName);
             if (equalsUserId || equalsUsername) {
                 try {
-                    OutputStream outputStream = clientSocket.getValue().getOutputStream();
-                    sendMsgToClient(outputStream, message);
-                    return;
+                    OutputStream outputStream = socketEntry.getValue().getOutputStream();
+                    sendMsgToClient(outputStream, ">>>"+this.userName+" secrete say to you: "+message);
+                    break;
                 } catch (IOException e) {
                     //e.printStackTrace();
                     ConsoleUtils.log(ConsoleUtils.prettifyInput(e.getMessage()));
                 }
             }
         }
+    }
+
+    /**
+     * 处理广播消息
+     * @param msg
+     */
+    private void handleAllChatClientMsg(String msg){
+        sendMsgChatToClients(this.userName,msg,true);
+
     }
 
 
@@ -295,9 +304,9 @@ public class ClientSocketHandler implements Runnable {
      */
     private void sendMsgChatToClients(String userName, String message, boolean exceptSelf) {
         ConcurrentHashMap<String, Socket> handleClientSocketMap = ChatServer.getHandleClientSocketMap();
-        for (Map.Entry<String, Socket> clientSocket : handleClientSocketMap.entrySet()) {
+        for (Map.Entry<String, Socket> stringSocketEntry : handleClientSocketMap.entrySet()) {
             //String clientId = clientSocket.getKey();
-            Socket socket = clientSocket.getValue();
+            Socket socket = stringSocketEntry.getValue();
             if (exceptSelf) {
                 if (this.clientSocket == socket) {
                     continue;

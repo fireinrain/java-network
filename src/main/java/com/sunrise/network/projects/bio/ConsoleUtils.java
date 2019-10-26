@@ -1,9 +1,7 @@
 package com.sunrise.network.projects.bio;
 
-import java.net.Socket;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
 /**
@@ -26,7 +24,7 @@ public class ConsoleUtils {
      * 7  支持发送点对点私密消息
      */
     private static List<Pattern> chatRuleList = Arrays.asList(
-            Pattern.compile("^@ (\\w+|\\d+) (.+)$"),
+            Pattern.compile("^@ ([\\w+|^all]|\\d+) (.+)$"),
             Pattern.compile("^@ all (.+)$"),
             Pattern.compile("^# all$"),
             Pattern.compile("^# quit$"));
