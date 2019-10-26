@@ -2,7 +2,8 @@ package com.sunrise.network;
 
 import org.junit.Test;
 
-import static org.junit.Assert.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * @description:
@@ -13,5 +14,11 @@ public class AppTest {
 
     @Test
     public void testBrowserGoogle() {
+        Pattern pattern = Pattern.compile("^@ (\\w+|\\d+) (.+)");
+        Matcher matcher = pattern.matcher("# xxxx hello");
+        if (matcher.matches()){
+            System.out.println(matcher.group(1));
+            System.out.println(matcher.group(2));
+        }
     }
 }
