@@ -16,6 +16,61 @@ import java.util.concurrent.Executors;
  * @date: 2019/10/27 10:09 PM
  */
 public class Demo9 {
+
+    static class PooledDynamicTask implements Runnable{
+
+        private Socket socket;
+        public PooledDynamicTask(Socket socket) {
+            this.socket = socket;
+        }
+
+        @Override
+        public void run() {
+            try (OutputStream outputStream = this.socket.getOutputStream()) {
+                LocalDateTime localDateTime = LocalDateTime.now();
+                String name = Thread.currentThread().getName();
+                outputStream.write((localDateTime.toString()+": "+name+"\r\n").getBytes());
+                outputStream.flush();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }finally {
+                if (this.socket!=null){
+                    try {
+                        this.socket.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
+    }
+    static class DynamicTime extends Thread{
+        private Socket socket;
+
+        public DynamicTime(Socket socket) {
+            this.socket = socket;
+        }
+
+        @Override
+        public void run() {
+            try (OutputStream outputStream = this.socket.getOutputStream()) {
+                LocalDateTime localDateTime = LocalDateTime.now();
+                String name = Thread.currentThread().getName();
+                outputStream.write((localDateTime.toString()+": "+name+"\r\n").getBytes());
+                outputStream.flush();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }finally {
+                if (this.socket!=null){
+                    try {
+                        this.socket.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
+    }
     public static void main(String[] args) {
         //testServeSocket();
         //testMultiThreadServer();
@@ -72,60 +127,6 @@ public class Demo9 {
             }
         } catch (IOException e) {
             e.printStackTrace();
-        }
-    }
-}
-class PooledDynamicTask implements Runnable{
-
-    private Socket socket;
-    public PooledDynamicTask(Socket socket) {
-        this.socket = socket;
-    }
-
-    @Override
-    public void run() {
-        try (OutputStream outputStream = this.socket.getOutputStream()) {
-            LocalDateTime localDateTime = LocalDateTime.now();
-            String name = Thread.currentThread().getName();
-            outputStream.write((localDateTime.toString()+": "+name+"\r\n").getBytes());
-            outputStream.flush();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }finally {
-            if (this.socket!=null){
-                try {
-                    this.socket.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-    }
-}
-class DynamicTime extends Thread{
-    private Socket socket;
-
-    public DynamicTime(Socket socket) {
-        this.socket = socket;
-    }
-
-    @Override
-    public void run() {
-        try (OutputStream outputStream = this.socket.getOutputStream()) {
-            LocalDateTime localDateTime = LocalDateTime.now();
-            String name = Thread.currentThread().getName();
-            outputStream.write((localDateTime.toString()+": "+name+"\r\n").getBytes());
-            outputStream.flush();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }finally {
-            if (this.socket!=null){
-                try {
-                    this.socket.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
         }
     }
 }
