@@ -1,14 +1,9 @@
 package com.sunrise.network.studyapi.nio;
 
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.RandomAccessFile;
+import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.*;
-import java.nio.file.OpenOption;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
+import java.nio.file.*;
 
 /**
  * @description: 读取一个文件中的内容
@@ -23,7 +18,15 @@ public class Demo2 {
     }
 
     private static void testWriteDataToFile() {
-        try(FileChannel fileChannel = FileChannel.open(Paths.get(".gitignore-write"), StandardOpenOption.CREATE_NEW)) {
+        Path file = Paths.get(".gitignore-write");
+        if (!Files.exists(file)){
+            try {
+                Files.createFile(file);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        try(FileChannel fileChannel = FileChannel.open(Paths.get(".gitignore-write"), StandardOpenOption.WRITE)) {
             byte[] bytes = new byte[1024];
             ByteBuffer byteBuffer = ByteBuffer.wrap(bytes);
             String message = "I am a git copy";
@@ -33,6 +36,8 @@ public class Demo2 {
             }
             byte[] datas = stringBuilder.toString().getBytes();
             byteBuffer.put(datas);
+            //切换为写模式
+            byteBuffer.flip();
             fileChannel.write(byteBuffer);
             System.out.println("写入完成");
 
