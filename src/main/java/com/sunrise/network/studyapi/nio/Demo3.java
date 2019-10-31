@@ -1,9 +1,13 @@
 package com.sunrise.network.studyapi.nio;
 
+import java.nio.channels.Channels;
+import java.nio.channels.FileChannel;
+import java.nio.channels.ReadableByteChannel;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.zip.InflaterInputStream;
 
 /**
  * @description:
@@ -27,6 +31,10 @@ public class Demo3 {
         Path path1 = FileSystems.getDefault().getPath(".gitignore");
 
         //Files 和文件相关的各种操作
+        //谷歌： java channel 在系统层面到底是什么
+        // 资料 http://dawell.cc/2019/08/31/netty%E4%B8%8Enio%E6%8F%AD%E7%A7%98/
         System.out.println(Files.isReadable(Paths.get(".gitignore")));
+        FileChannel fileChannel = FileChannel.open();
+        fileChannel.write();
     }
 }
