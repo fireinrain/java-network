@@ -12,9 +12,9 @@ import java.nio.file.*;
  */
 public class Demo2 {
     public static void main(String[] args) {
-        // testReadDataFromFile();
+        testReadDataFromFile();
         //testGetChannle();
-        testWriteDataToFile();
+        // testWriteDataToFile();
     }
 
     private static void testWriteDataToFile() {
