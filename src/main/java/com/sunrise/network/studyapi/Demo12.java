@@ -1,13 +1,13 @@
 package com.sunrise.network.studyapi;
 
 import javax.net.SocketFactory;
-import javax.net.ssl.SSLSocket;
-import javax.net.ssl.SSLSocketFactory;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
+import javax.net.ssl.*;
+import java.io.*;
+import java.net.Socket;
 import java.net.UnknownHostException;
+import java.security.*;
+import java.security.cert.CertificateException;
+import java.util.Arrays;
 
 /**
  * @description: 安全的套接字 SSL支持
@@ -29,9 +29,70 @@ public class Demo12 {
         //}
 
         testSSLSocket("www.usps.com", 443);
+        testSSLServerSocket(443);
 
     }
 
+    //服务端安全套接字
+    private static void testSSLServerSocket(int port) {
+        try {
+            SSLContext sslContext = SSLContext.getInstance("SSL");
+            KeyManagerFactory sunX509 = KeyManagerFactory.getInstance("SunX509");
+            KeyStore jks = KeyStore.getInstance("JKS");
+
+            char[] readPassword = System.console().readPassword();
+            jks.load(new FileInputStream("jnp4e.keys"),readPassword);
+            sunX509.init(jks,readPassword);
+            sslContext.init(sunX509.getKeyManagers(),null,null);
+
+            //插除口令
+            Arrays.fill(readPassword,'0');
+            SSLServerSocketFactory serverSocketFactory = sslContext.getServerSocketFactory();
+            SSLServerSocket serverSocket = (SSLServerSocket)serverSocketFactory.createServerSocket(port);
+
+            //增加匿名密码组
+            String[] supportedCipherSuites = serverSocket.getSupportedCipherSuites();
+            String[] anoSupport = new String[supportedCipherSuites.length];
+            int numSupport = 0;
+            for (int i = 0; i <supportedCipherSuites.length ; i++) {
+                if (supportedCipherSuites[i].indexOf("_anon_")>0){
+                    anoSupport[numSupport++] = supportedCipherSuites[i];
+                }
+            }
+            String[] oldEnable = serverSocket.getEnabledCipherSuites();
+            String[] newEnable = new String[oldEnable.length + numSupport];
+            System.arraycopy(oldEnable,0,newEnable,0,oldEnable.length);
+            System.arraycopy(anoSupport,0,newEnable,oldEnable.length,numSupport);
+            //设置工作已经做好了
+
+            while (true){
+                try (Socket clientSocket = serverSocket.accept()){
+                    InputStream inputStream = clientSocket.getInputStream();
+                    int c;
+                    while ((c = inputStream.read())!=-1){
+                        System.out.write(c);
+                    }
+                }
+            }
+
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        } catch (KeyStoreException e) {
+            e.printStackTrace();
+        } catch (CertificateException e) {
+            e.printStackTrace();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (UnrecoverableKeyException e) {
+            e.printStackTrace();
+        } catch (KeyManagementException e) {
+            e.printStackTrace();
+        }
+    }
+
+    //客户端安全套接字
     private static void testSSLSocket(String host, int port) {
         SocketFactory socketFactory = SSLSocketFactory.getDefault();
         BufferedReader bufferedReader = null;
