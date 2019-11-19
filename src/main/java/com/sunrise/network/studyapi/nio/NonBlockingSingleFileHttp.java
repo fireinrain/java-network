@@ -101,6 +101,7 @@ public class NonBlockingSingleFileHttp {
                         SocketChannel clientChannel = (SocketChannel) selectionKey.channel();
                         ByteBuffer byteBuffer = ByteBuffer.allocate(4096);
                         clientChannel.read(byteBuffer);
+                        System.out.println(new String(byteBuffer.array()));
                         //将通道切换为只写模式
                         selectionKey.interestOps(SelectionKey.OP_WRITE);
                         selectionKey.attach(byteBuffer.duplicate());
