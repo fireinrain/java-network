@@ -1,7 +1,6 @@
 package com.sunrise.network.studyapi;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.nio.charset.StandardCharsets;
@@ -17,6 +16,7 @@ public class UDPServer {
 
     public static void main(String[] args) {
         try (DatagramSocket socket = new DatagramSocket(PORT)) {
+            System.out.println(socket.getLocalPort());
             while (true) {
                 try {
                     DatagramPacket request = new DatagramPacket(new byte[1024], 1024);
